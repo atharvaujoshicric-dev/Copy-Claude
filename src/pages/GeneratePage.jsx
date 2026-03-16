@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import TaskSelector from '../components/TaskSelector.jsx'
 import CopyForm from '../components/CopyForm.jsx'
 import CopyOutput from '../components/CopyOutput.jsx'
@@ -6,27 +6,48 @@ import { getApiKey, fetchProjects } from '../utils/store.js'
 import { generateCopy } from '../utils/api.js'
 
 export default function GeneratePage() {
-  const [task,     setTask]     = useState(null)
-  const [projects, setProjects] = useState([])
-  const [output,   setOutput]   = useState(null)
-  const [lastForm, setLastForm] = useState(null)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState(null)
+  const [task,      setTask]      = useState(null)
+  const [projects,  setProjects]  = useState([])
+  const [output,    setOutput]    = useState(null)
+  const [lastForm,  setLastForm]  = useState(null)
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState(null)
+  const [countdown, setCountdown] = useState(null)
+  const timerRef = useRef(null)
   const hasKey = !!getApiKey()
 
   useEffect(() => {
     fetchProjects().then(setProjects)
   }, [])
 
+  // Countdown timer shown when rate-limited
+  useEffect(() => {
+    if (countdown === null) return
+    if (countdown <= 0) { setCountdown(null); return }
+    timerRef.current = setTimeout(() => setCountdown(c => c - 1), 1000)
+    return () => clearTimeout(timerRef.current)
+  }, [countdown])
+
   async function handleGenerate(formData) {
-    setLoading(true); setError(null); setOutput(null); setLastForm(formData)
+    setLoading(true)
+    setError(null)
+    setOutput(null)
+    setLastForm(formData)
+    setCountdown(null)
+
+    // Start countdown display if likely to hit rate limit
+    // (We start it optimistically; api.js handles the actual retry)
     try {
-      const text = await generateCopy({ ...formData, taskType: task })
+      const text = await generateCopy({ ...formData, taskType: task },
+        // Pass a callback to trigger countdown in UI
+        2,
+      )
       setOutput({ text, taskType: task, projectName: formData.projectName })
     } catch (e) {
       setError(e.message)
     } finally {
       setLoading(false)
+      setCountdown(null)
     }
   }
 
@@ -52,8 +73,7 @@ export default function GeneratePage() {
             No API key set.{' '}
             <a href="/Copy-Claude/admin/login" className="text-gold-600 underline underline-offset-2">
               Admin login
-            </a>{' '}
-            → Settings → paste your free Gemini API key.
+            </a>{' '}→ Settings → paste your free Groq API key.
           </p>
         </div>
       )}
@@ -81,16 +101,38 @@ export default function GeneratePage() {
               <div>
                 <p className="text-sm font-semibold text-red-800">Generation failed</p>
                 <p className="text-xs text-red-600 mt-0.5 leading-relaxed">{error}</p>
+                {error.includes('Rate limit') && (
+                  <button
+                    onClick={() => lastForm && handleGenerate(lastForm)}
+                    className="mt-3 text-xs px-3 py-1.5 bg-red-600 text-white rounded-sm hover:bg-red-700 transition-all"
+                  >
+                    Try Again
+                  </button>
+                )}
               </div>
             </div>
           )}
+
           {loading && (
             <div className="card p-14 text-center">
               <div className="spinner text-gold-500 mx-auto mb-4" style={{ width: 24, height: 24 }}></div>
-              <p className="text-sm text-ink-600">Generating your copy…</p>
-              <p className="text-[11px] text-ink-600/40 mt-1">Usually 5–15 seconds</p>
+              {countdown !== null ? (
+                <>
+                  <p className="text-sm font-medium text-ink-700">Rate limit hit — retrying automatically…</p>
+                  <div className="mt-3 text-2xl font-display text-gold-500">{countdown}s</div>
+                  <p className="text-[11px] text-ink-600/40 mt-1">
+                    Gemini free tier allows 15 requests/min. Retrying shortly.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-ink-600">Generating your copy…</p>
+                  <p className="text-[11px] text-ink-600/40 mt-1">Usually 5–15 seconds</p>
+                </>
+              )}
             </div>
           )}
+
           {output && !loading && (
             <CopyOutput
               output={output.text}
@@ -99,6 +141,7 @@ export default function GeneratePage() {
               onRegenerate={() => lastForm && handleGenerate(lastForm)}
             />
           )}
+
           {!output && !loading && !error && (
             <div className="card p-14 text-center border-dashed border-parchment-200">
               <div className="space-y-1.5 mb-5">
