@@ -2,24 +2,21 @@ import { useState, useEffect } from 'react'
 import TaskSelector from '../components/TaskSelector.jsx'
 import CopyForm from '../components/CopyForm.jsx'
 import CopyOutput from '../components/CopyOutput.jsx'
-import { getApiKey, getSheetUrl, fetchProjects } from '../utils/store.js'
+import { getApiKey, fetchProjects } from '../utils/store.js'
 import { generateCopy } from '../utils/api.js'
 
 export default function GeneratePage() {
-  const [task,      setTask]      = useState(null)
-  const [projects,  setProjects]  = useState([])
-  const [output,    setOutput]    = useState(null)
-  const [lastForm,  setLastForm]  = useState(null)
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState(null)
-
-  const hasKey   = !!getApiKey()
-  const hasSheet = !!getSheetUrl()
+  const [task,     setTask]     = useState(null)
+  const [projects, setProjects] = useState([])
+  const [output,   setOutput]   = useState(null)
+  const [lastForm, setLastForm] = useState(null)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
+  const hasKey = !!getApiKey()
 
   useEffect(() => {
-    if (!hasSheet) return
-    fetchProjects().then(setProjects).catch(() => {})
-  }, [hasSheet])
+    fetchProjects().then(setProjects)
+  }, [])
 
   async function handleGenerate(formData) {
     setLoading(true); setError(null); setOutput(null); setLastForm(formData)
@@ -36,7 +33,9 @@ export default function GeneratePage() {
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       <div className="mb-10">
-        <p className="text-[10px] uppercase tracking-[.16em] text-gold-500 font-semibold mb-2">AI-Powered Marketing Copy</p>
+        <p className="text-[10px] uppercase tracking-[.16em] text-gold-500 font-semibold mb-2">
+          AI-Powered Marketing Copy
+        </p>
         <h1 className="font-display text-4xl md:text-5xl text-ink-900 leading-[1.15] mb-3">
           Write better copy,<br /><em className="text-ink-600">ten times faster.</em>
         </h1>
@@ -48,11 +47,13 @@ export default function GeneratePage() {
 
       {!hasKey && (
         <div className="mb-6 card p-4 border-gold-400/40 bg-gold-400/5 flex items-start gap-3">
-          <span className="text-gold-500 mt-0.5">⚠</span>
+          <span className="text-gold-500 mt-0.5 text-base">⚠</span>
           <p className="text-sm text-ink-700">
-            No API key configured.{' '}
-            <a href="/admin/login" className="text-gold-600 underline underline-offset-2">Admin login</a>
-            {' '}→ Settings → add your free Gemini API key.
+            No API key set.{' '}
+            <a href="/Copy-Claude/admin/login" className="text-gold-600 underline underline-offset-2">
+              Admin login
+            </a>{' '}
+            → Settings → paste your free Gemini API key.
           </p>
         </div>
       )}
@@ -65,16 +66,18 @@ export default function GeneratePage() {
           />
           {task
             ? <CopyForm taskType={task} projects={projects} onSubmit={handleGenerate} loading={loading} />
-            : <div className="card p-8 text-center border-dashed border-parchment-200">
+            : (
+              <div className="card p-8 text-center border-dashed border-parchment-200">
                 <p className="text-sm text-ink-600/50">Select a task type to begin</p>
               </div>
+            )
           }
         </div>
 
         <div className="lg:col-span-7">
           {error && (
             <div className="card p-5 border-red-200 bg-red-50/50 flex gap-3">
-              <span className="text-red-500 flex-shrink-0">✕</span>
+              <span className="text-red-500 flex-shrink-0 text-base">✕</span>
               <div>
                 <p className="text-sm font-semibold text-red-800">Generation failed</p>
                 <p className="text-xs text-red-600 mt-0.5 leading-relaxed">{error}</p>
@@ -100,7 +103,8 @@ export default function GeneratePage() {
             <div className="card p-14 text-center border-dashed border-parchment-200">
               <div className="space-y-1.5 mb-5">
                 {[16, 10, 13, 7].map((w, i) => (
-                  <div key={i} className="h-1 bg-parchment-100 rounded-full mx-auto" style={{ width: `${w * 4}px` }}></div>
+                  <div key={i} className="h-1 bg-parchment-100 rounded-full mx-auto"
+                    style={{ width: `${w * 4}px` }}></div>
                 ))}
               </div>
               <p className="text-xs text-ink-600/40 uppercase tracking-widest">Generated copy appears here</p>
