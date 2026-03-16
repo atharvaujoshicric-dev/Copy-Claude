@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-parchment-50 text-ink-900 font-body;
+    background-image:
+      radial-gradient(ellipse at 15% 15%, rgba(212,168,71,0.07) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 85%, rgba(122,158,135,0.05) 0%, transparent 55%);
+    min-height: 100vh;
+  }
+  * { -webkit-font-smoothing: antialiased; }
+}
+
+@layer components {
+  .btn-primary { @apply bg-ink-900 text-parchment-50 font-medium px-5 py-2.5 rounded-sm text-sm tracking-wide hover:bg-ink-700 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed; }
+  .btn-gold    { @apply bg-gold-500 text-white font-medium px-5 py-2.5 rounded-sm text-sm tracking-wide hover:bg-gold-600 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed; }
+  .btn-outline { @apply border border-ink-700 text-ink-800 font-medium px-5 py-2.5 rounded-sm text-sm tracking-wide hover:bg-ink-900 hover:text-parchment-50 transition-all duration-150; }
+  .btn-ghost   { @apply text-ink-600 font-medium px-3 py-2 rounded-sm text-sm hover:text-ink-900 hover:bg-parchment-100 transition-all duration-150; }
+  .input-field { @apply w-full bg-white border border-parchment-200 rounded-sm px-4 py-2.5 text-ink-900 placeholder-ink-600/40 text-sm focus:outline-none focus:border-ink-700 focus:ring-1 focus:ring-ink-700/20 transition-colors; }
+  .label       { @apply block text-[10px] font-semibold text-ink-600 uppercase tracking-[0.12em] mb-1.5; }
+  .card        { @apply bg-white border border-parchment-200 rounded-sm shadow-sm; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width:18px; height:18px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:spin .65s linear infinite; display:inline-block; flex-shrink:0; }
+
+.copy-output h1,.copy-output h2,.copy-output h3 { font-family:'Playfair Display',serif; font-weight:600; color:#1A1714; margin-top:1.4em; margin-bottom:.4em; }
+.copy-output h1 { font-size:1.3rem; }
+.copy-output h2 { font-size:1.1rem; }
+.copy-output h3 { font-size:.95rem; }
+.copy-output p  { margin-bottom:.65em; line-height:1.75; color:#3E3A38; font-size:.875rem; }
+.copy-output ul,.copy-output ol { padding-left:1.4em; margin-bottom:.65em; }
+.copy-output li { margin-bottom:.2em; line-height:1.65; color:#3E3A38; font-size:.875rem; }
+.copy-output strong { color:#1A1714; font-weight:600; }
+.copy-output hr { border-color:#E8DFD0; margin:1.25em 0; }
+.copy-output blockquote { border-left:3px solid #D4A847; padding-left:1em; color:#5A5652; font-style:italic; margin:1em 0; }
