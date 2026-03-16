@@ -1,9 +1,10 @@
 import { TASK_SYSTEM_PROMPTS } from './tasks.js'
 import { getApiKey } from './store.js'
 
-// Try multiple models in order — if one is rate limited, fall back to next
 const MODELS = [
-  'gemini-1.5-flash'
+  'llama3-70b-8192',
+  'llama3-8b-8192',
+  'mixtral-8x7b-32768'
 ]
 
 export async function generateCopy({
@@ -27,27 +28,36 @@ PROJECT DETAILS:
 - Language: ${language || 'English'}
 - Notes: ${additionalNotes || 'None'}
 ${ctbContext ? `\n--- CTB / PROJECT BRIEF ---\n${ctbContext.slice(0, 4000)}\n---` : ''}
-
 Generate the ${taskType} copy now. Use ## headings and bullet points where appropriate.`
 
   let lastError = null
 
   for (const model of MODELS) {
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 2000, temperature: 0.8 },
-          }),
-        }
-      )
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert real estate marketing copywriter.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.8
+        })
+      })
 
       if (res.status === 429) {
-        // Rate limited on this model — try next
         lastError = new Error('Rate limit hit. Trying another model…')
         continue
       }
@@ -55,19 +65,19 @@ Generate the ${taskType} copy now. Use ## headings and bullet points where appro
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         const msg = err?.error?.message || `API error ${res.status}`
-        if (res.status === 400) throw new Error('Invalid Gemini API key. Update it in Admin → Settings.')
+        if (res.status === 401) throw new Error('Invalid Groq API key. Update it in Admin → Settings.')
         throw new Error(msg)
       }
 
       const data = await res.json()
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const text = data?.choices?.[0]?.message?.content || ''
       if (text) return text
+
     } catch (e) {
-      if (e.message.includes('Invalid Gemini API key')) throw e
+      if (e.message.includes('Invalid Groq API key')) throw e
       lastError = e
     }
   }
 
-  // All models failed
   throw new Error('Rate limit reached on all models. Please wait 1 minute and try again.')
 }
