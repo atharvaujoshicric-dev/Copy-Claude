@@ -189,17 +189,16 @@ function ProjectForm({ initial, saving, onSave, onClose }) {
   const [fileLoading, setFileLoading] = useState(false)
 
   async function handleFile(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setFileLoading(true)
-    // NEW (fixed)
-try {
-  const text = await file.text()
-  setCtb(prev => prev ? prev + '\n\n' + text : text)
-}
-    catch { alert('Could not read file. Please paste content manually.') }
-    finally { setFileLoading(false); e.target.value = '' }
+  const file = e.target.files?.[0]
+  if (!file) return
+  setFileLoading(true)
+  try {
+    const text = await file.text()        // ← await here, outside arrow fn
+    setCtb(prev => prev ? prev + '\n\n' + text : text)  // ← no await here
   }
+  catch { alert('Could not read file. Please paste content manually.') }
+  finally { setFileLoading(false); e.target.value = '' }
+}
 
   return (
     <div className="fixed inset-0 bg-ink-950/60 z-40 flex items-start justify-end">
