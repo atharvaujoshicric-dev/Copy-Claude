@@ -3,9 +3,7 @@ import { getApiKey } from './store.js'
 
 // Try multiple models in order — if one is rate limited, fall back to next
 const MODELS = [
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-pro',
+  'gemini-1.5-flash'
 ]
 
 export async function generateCopy({
