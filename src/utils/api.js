@@ -57,3 +57,19 @@ Generate the ${taskType} copy now. Use ## headings and bullet points where appro
   const data = await res.json()
   return data?.choices?.[0]?.message?.content || ''
 }
+Done
+Copy everything above and paste it into GitHub replacing the old file. Then commit.
+
+Also — after committing, wait for the GitHub Action to finish (green tick), then:
+
+Open your live site
+Hard refresh — press Ctrl + Shift + R (Windows) or Cmd + Shift + R (Mac)
+Go to Admin → Settings → delete the old Gemini key → paste your Groq key (starts with gsk_) → Save
+The error "Invalid Gemini API key" means the browser is still running old cached code AND/OR the old Gemini key is still saved in localStorage. The hard refresh + re-entering the key will fix both.
+
+
+
+
+
+
+
