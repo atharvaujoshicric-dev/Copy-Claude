@@ -1,11 +1,9 @@
 import { TASK_SYSTEM_PROMPTS } from './tasks.js'
 import { getApiKey } from './store.js'
 
-const MODELS = [
-  'llama3-70b-8192',
-  'llama3-8b-8192',
-  'mixtral-8x7b-32768'
-]
+// Groq free tier — very fast, generous limits
+// Model: llama-3.3-70b-versatile (best quality on Groq free tier)
+const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
 export async function generateCopy({
   taskType, projectName, location, configuration,
@@ -15,9 +13,9 @@ export async function generateCopy({
   const apiKey = getApiKey()
   if (!apiKey) throw new Error('No API key set. Go to Admin → Settings.')
 
-  const prompt = `${TASK_SYSTEM_PROMPTS[taskType] || ''}
+  const systemPrompt = TASK_SYSTEM_PROMPTS[taskType] || `You are a professional real estate marketing copywriter. Generate ${taskType} copy.`
 
-PROJECT DETAILS:
+  const userMessage = `PROJECT DETAILS:
 - Project: ${projectName || 'Not specified'}
 - Location: ${location || 'Not specified'}
 - Configuration: ${configuration || 'Not specified'}
@@ -28,56 +26,34 @@ PROJECT DETAILS:
 - Language: ${language || 'English'}
 - Notes: ${additionalNotes || 'None'}
 ${ctbContext ? `\n--- CTB / PROJECT BRIEF ---\n${ctbContext.slice(0, 4000)}\n---` : ''}
+
 Generate the ${taskType} copy now. Use ## headings and bullet points where appropriate.`
 
-  let lastError = null
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userMessage },
+      ],
+      max_tokens: 2000,
+      temperature: 0.8,
+    }),
+  })
 
-  for (const model of MODELS) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert real estate marketing copywriter.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 2000,
-          temperature: 0.8
-        })
-      })
-
-      if (res.status === 429) {
-        lastError = new Error('Rate limit hit. Trying another model…')
-        continue
-      }
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        const msg = err?.error?.message || `API error ${res.status}`
-        if (res.status === 401) throw new Error('Invalid Groq API key. Update it in Admin → Settings.')
-        throw new Error(msg)
-      }
-
-      const data = await res.json()
-      const text = data?.choices?.[0]?.message?.content || ''
-      if (text) return text
-
-    } catch (e) {
-      if (e.message.includes('Invalid Groq API key')) throw e
-      lastError = e
-    }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const msg = err?.error?.message || `API error ${res.status}`
+    if (res.status === 401) throw new Error('Invalid Groq API key. Update it in Admin → Settings.')
+    if (res.status === 429) throw new Error('Rate limit hit. Please wait a moment and try again.')
+    throw new Error(msg)
   }
 
-  throw new Error('Rate limit reached on all models. Please wait 1 minute and try again.')
+  const data = await res.json()
+  return data?.choices?.[0]?.message?.content || ''
 }
