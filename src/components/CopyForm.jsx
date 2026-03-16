@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { TONES, AUDIENCES, LANGUAGES } from '../utils/tasks.js'
 
-const PLATFORM_TASKS = new Set(['Ad Communication','Videos','WA Creatives'])
+const PLATFORM_TASKS  = new Set(['Ad Communication', 'Videos', 'WA Creatives'])
+const PHONE_TASKS     = new Set(['WA Creatives', 'Ad Communication', 'Communication Doc', 'Nurturing Emailers'])
+const OCCASION_TASKS  = new Set(['WA Creatives', 'Ad Communication'])
 
 export default function CopyForm({ taskType, projects, onSubmit, loading }) {
   const [f, setF] = useState({
-    projectId:'', projectName:'', location:'', configuration:'',
-    targetAudience:'', keyUSPs:'', tone:'Premium & Aspirational',
-    platform:'', language:'English', additionalNotes:'',
+    projectId: '', projectName: '', location: '', configuration: '',
+    targetAudience: '', keyUSPs: '', tone: 'Premium & Aspirational',
+    platform: '', language: 'English', additionalNotes: '',
+    phoneNumber: '', occasion: '', price: '',
   })
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
 
@@ -22,7 +25,14 @@ export default function CopyForm({ taskType, projects, onSubmit, loading }) {
   function submit(e) {
     e.preventDefault()
     const proj = projects.find(p => p.id === f.projectId)
-    onSubmit({ ...f, ctbContext: proj?.ctbContent || '' })
+    // Build enriched notes with phone, occasion, price
+    const extras = [
+      f.phoneNumber && `Phone Number: ${f.phoneNumber}`,
+      f.occasion    && `Occasion/Campaign: ${f.occasion}`,
+      f.price       && `Price: ${f.price}`,
+      f.additionalNotes && `Notes: ${f.additionalNotes}`,
+    ].filter(Boolean).join('\n')
+    onSubmit({ ...f, additionalNotes: extras, ctbContext: proj?.ctbContent || '' })
   }
 
   const linked = projects.find(p => p.id === f.projectId)
@@ -32,6 +42,7 @@ export default function CopyForm({ taskType, projects, onSubmit, loading }) {
       <p className="label mb-4">Step 2 — Project Details</p>
       <form onSubmit={submit} className="space-y-4">
 
+        {/* Project link */}
         {projects.length > 0 && (
           <div>
             <label className="label">Link Project (optional)</label>
@@ -45,25 +56,53 @@ export default function CopyForm({ taskType, projects, onSubmit, loading }) {
           </div>
         )}
 
+        {/* Project name */}
         <div>
           <label className="label">Project / Developer Name *</label>
-          <input className="input-field" placeholder="e.g. Prestige Lakeside Habitat"
+          <input className="input-field" placeholder="e.g. GK ARIA, Tathawade Highstreet"
             value={f.projectName} onChange={e => set('projectName', e.target.value)} required />
         </div>
 
+        {/* Location + Config */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Location</label>
-            <input className="input-field" placeholder="e.g. Whitefield, Bangalore"
+            <input className="input-field" placeholder="e.g. Tathawade, Pune"
               value={f.location} onChange={e => set('location', e.target.value)} />
           </div>
           <div>
             <label className="label">Configuration</label>
-            <input className="input-field" placeholder="e.g. 2 & 3 BHK, ₹1.2 Cr"
+            <input className="input-field" placeholder="e.g. 2 BHK"
               value={f.configuration} onChange={e => set('configuration', e.target.value)} />
           </div>
         </div>
 
+        {/* Price — always show */}
+        <div>
+          <label className="label">Price / Starting Price</label>
+          <input className="input-field" placeholder="e.g. ₹71.1 Lacs* / ₹1.2 Cr*"
+            value={f.price} onChange={e => set('price', e.target.value)} />
+        </div>
+
+        {/* Occasion — for WA / Ad */}
+        {OCCASION_TASKS.has(taskType) && (
+          <div>
+            <label className="label">Occasion / Campaign (optional)</label>
+            <input className="input-field" placeholder="e.g. Gudi Padwa, Diwali, New Launch"
+              value={f.occasion} onChange={e => set('occasion', e.target.value)} />
+          </div>
+        )}
+
+        {/* Phone number */}
+        {PHONE_TASKS.has(taskType) && (
+          <div>
+            <label className="label">Contact Number</label>
+            <input className="input-field" placeholder="e.g. 080-65918500"
+              value={f.phoneNumber} onChange={e => set('phoneNumber', e.target.value)} />
+          </div>
+        )}
+
+        {/* Target Audience */}
         <div>
           <label className="label">Target Audience</label>
           <div className="flex flex-wrap gap-1.5 mb-2">
@@ -79,13 +118,15 @@ export default function CopyForm({ taskType, projects, onSubmit, loading }) {
             value={f.targetAudience} onChange={e => set('targetAudience', e.target.value)} />
         </div>
 
+        {/* USPs */}
         <div>
           <label className="label">Key USPs / Highlights</label>
           <textarea className="input-field resize-none" rows={3}
-            placeholder="e.g. Rooftop infinity pool, 5-acre landscape, RERA approved, near metro"
+            placeholder="e.g. 0 Dead Space Layouts, Prime Highstreet Location, 50-50 Payment Scheme, Fixed Pre-EMI ₹21,000*"
             value={f.keyUSPs} onChange={e => set('keyUSPs', e.target.value)} />
         </div>
 
+        {/* Tone */}
         <div>
           <label className="label">Tone & Style</label>
           <div className="flex flex-wrap gap-1.5">
@@ -99,6 +140,7 @@ export default function CopyForm({ taskType, projects, onSubmit, loading }) {
           </div>
         </div>
 
+        {/* Language + Platform */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Language</label>
@@ -109,22 +151,24 @@ export default function CopyForm({ taskType, projects, onSubmit, loading }) {
           {PLATFORM_TASKS.has(taskType) && (
             <div>
               <label className="label">Platform / Format</label>
-              <input className="input-field" placeholder="e.g. Instagram, 30-sec"
+              <input className="input-field" placeholder="e.g. WhatsApp, Instagram"
                 value={f.platform} onChange={e => set('platform', e.target.value)} />
             </div>
           )}
         </div>
 
+        {/* Additional notes */}
         <div>
           <label className="label">Additional Notes</label>
           <textarea className="input-field resize-none" rows={2}
-            placeholder="Any specific requirements, do's & don'ts…"
+            placeholder="Any specific requirements, do's & don'ts, RERA number…"
             value={f.additionalNotes} onChange={e => set('additionalNotes', e.target.value)} />
         </div>
 
-        <button type="submit" disabled={loading || !f.projectName} className="btn-gold w-full flex items-center justify-center gap-2">
+        <button type="submit" disabled={loading || !f.projectName}
+          className="btn-gold w-full flex items-center justify-center gap-2">
           {loading
-            ? <><span className="spinner text-white" style={{width:15,height:15}}></span> Generating…</>
+            ? <><span className="spinner text-white" style={{ width: 15, height: 15 }}></span> Generating…</>
             : '✦ Generate Copy'}
         </button>
       </form>
