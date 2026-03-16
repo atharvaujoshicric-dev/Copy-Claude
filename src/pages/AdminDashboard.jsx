@@ -192,7 +192,11 @@ function ProjectForm({ initial, saving, onSave, onClose }) {
     const file = e.target.files?.[0]
     if (!file) return
     setFileLoading(true)
-    try { setCtb(prev => prev ? prev + '\n\n' + await file.text() : await file.text()) }
+    // NEW (fixed)
+try {
+  const text = await file.text()
+  setCtb(prev => prev ? prev + '\n\n' + text : text)
+}
     catch { alert('Could not read file. Please paste content manually.') }
     finally { setFileLoading(false); e.target.value = '' }
   }
