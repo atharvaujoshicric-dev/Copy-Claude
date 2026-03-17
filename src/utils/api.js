@@ -546,22 +546,9 @@ Output ONLY the Communication Doc. No preamble.`
 }
 
 // ─── Call Groq API ────────────────────────────────────────────────
-async function callGroq(system, user, language, hasPdf, pdfBase64) {
+async function callGroq(system, user, language) {
   const apiKey = getApiKey()
-  const model = pickModel(language, hasPdf)
-
-  // Build messages — if PDF attached, send as document content
-  const messages = [{ role: 'system', content: system }]
-
-  if (pdfBase64) {
-    // Groq doesn't support PDF natively — extract key info via text message
-    messages.push({
-      role: 'user',
-      content: `The project brief PDF has been provided. Key details from it should inform your copy. Here are the inputs:\n\n${user}`,
-    })
-  } else {
-    messages.push({ role: 'user', content: user })
-  }
+  const model = pickModel(language, false)
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -571,7 +558,10 @@ async function callGroq(system, user, language, hasPdf, pdfBase64) {
     },
     body: JSON.stringify({
       model,
-      messages,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user',   content: user },
+      ],
       max_tokens: 4000,
       temperature: 0.75,
     }),
@@ -593,8 +583,7 @@ async function callGroq(system, user, language, hasPdf, pdfBase64) {
 export async function generateCopy(data) {
   if (!getApiKey()) throw new Error('No API key set. Go to Admin → Settings.')
   const { system, user } = buildPrompt(data.taskType, data)
-  const hasPdf = !!data.ctbFile
-  return callGroq(system, user, data.language, hasPdf, data.ctbFile?.base64 || null)
+  return callGroq(system, user, data.language)
 }
 
 // ─── WA Image generation ──────────────────────────────────────────
