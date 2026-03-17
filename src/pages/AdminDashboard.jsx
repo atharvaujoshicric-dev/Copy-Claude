@@ -356,9 +356,9 @@ function SettingsTab() {
   return (
     <div className="max-w-xl space-y-6">
       <div className="card p-6">
-        <h2 className="font-display text-lg text-ink-900 mb-1">Groq API Key</h2>
+        <h2 className="font-display text-lg text-ink-900 mb-1">OpenAI API Key</h2>
         <p className="text-xs text-ink-600 mb-4 leading-relaxed">
-          Powers all AI copy generation. Free, fast, no credit card needed. Get your key at{' '}
+          Powers all AI copy generation. GPT-4o gives the most reliable, format-accurate output. Get your key at{' '}
           <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer"
             className="text-gold-600 underline underline-offset-2">
             console.groq.com
@@ -367,10 +367,10 @@ function SettingsTab() {
         </p>
         <label className="label">API Key (starts with gsk_…)</label>
         <input className="input-field font-mono text-xs" type="password"
-          placeholder="gsk_…"
+          placeholder="sk-proj-…"
           value={apiKey} onChange={e => setApiKeyLocal(e.target.value)} />
         {apiKey && (
-          <p className="text-[11px] text-sage-500 mt-1.5">✓ Key configured — {apiKey.slice(0, 12)}…</p>
+          <p className="text-[11px] text-sage-500 mt-1.5">✓ Key configured — {apiKey.slice(0, 14)}…</p>
         )}
       </div>
 
