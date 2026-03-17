@@ -1,17 +1,14 @@
 import { getApiKey } from './store.js'
 
-// ─── Model selection ──────────────────────────────────────────────
-// llama-3.3-70b-versatile: best for English
-// llama3-groq-70b-8192-tool-use-preview: handles Indic scripts better
-// mixtral-8x7b-32768: fallback with large context (good for PDF text)
-const MODEL_DEFAULT  = 'llama-3.3-70b-versatile'
-const MODEL_INDIC    = 'llama-3.1-8b-instant'   // faster for Indic
-const MODEL_LARGE_CTX = 'mixtral-8x7b-32768'    // for large PDF contexts
+// ─── OpenAI model ─────────────────────────────────────────────────
+// gpt-4o: best quality, follows format instructions reliably
+// gpt-4o-mini: faster + cheaper, still very good for structured copy
+const MODEL_DEFAULT = 'gpt-4o'
+const MODEL_FAST    = 'gpt-4o-mini'  // used for Hinglish/Hindi/Marathi (faster)
 
-function pickModel(language, hasPdf) {
-  if (language === 'Hindi' || language === 'Marathi') return MODEL_INDIC
-  if (language === 'Hinglish') return MODEL_DEFAULT // English model handles Hinglish fine
-  if (hasPdf) return MODEL_LARGE_CTX
+function pickModel(language) {
+  if (language === 'Hindi' || language === 'Marathi' || language === 'Hinglish')
+    return MODEL_DEFAULT  // gpt-4o handles Indic scripts natively
   return MODEL_DEFAULT
 }
 
@@ -545,12 +542,14 @@ Output ONLY the Communication Doc. No preamble.`
   return { system: SYSTEM, user: USER }
 }
 
-// ─── Call Groq API ────────────────────────────────────────────────
-async function callGroq(system, user, language) {
+// ─── Call OpenAI API ─────────────────────────────────────────────
+async function callOpenAI(system, user, language) {
   const apiKey = getApiKey()
-  const model = pickModel(language, false)
+  if (!apiKey) throw new Error('No API key set. Go to Admin → Settings.')
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const model = pickModel(language)
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -570,8 +569,9 @@ async function callGroq(system, user, language) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     const msg = err?.error?.message || `API error ${res.status}`
-    if (res.status === 401) throw new Error('Invalid Groq API key. Update it in Admin → Settings.')
-    if (res.status === 429) throw new Error('Rate limit hit. Please wait a moment and try again.')
+    if (res.status === 401) throw new Error('Invalid OpenAI API key. Update it in Admin → Settings.')
+    if (res.status === 429) throw new Error('Rate limit / quota exceeded. Check your OpenAI billing at platform.openai.com.')
+    if (res.status === 400) throw new Error(`Bad request: ${msg}`)
     throw new Error(msg)
   }
 
@@ -583,145 +583,5 @@ async function callGroq(system, user, language) {
 export async function generateCopy(data) {
   if (!getApiKey()) throw new Error('No API key set. Go to Admin → Settings.')
   const { system, user } = buildPrompt(data.taskType, data)
-  return callGroq(system, user, data.language)
-}
-
-// ─── WA Image generation ──────────────────────────────────────────
-// Renders WA creative copy as a styled image using HTML Canvas
-export function renderWAImage(creativeText, projectName, bgColor = '#1a1714') {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas')
-    canvas.width  = 1080
-    canvas.height = 1350 // 4:5 ratio — works for Instagram and WA
-    const ctx = canvas.getContext('2d')
-
-    // Background
-    ctx.fillStyle = bgColor
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    // Subtle texture overlay
-    ctx.fillStyle = 'rgba(255,255,255,0.02)'
-    for (let i = 0; i < canvas.height; i += 4) {
-      ctx.fillRect(0, i, canvas.width, 1)
-    }
-
-    // Gold accent bar top
-    ctx.fillStyle = '#C49635'
-    ctx.fillRect(80, 80, 120, 4)
-
-    // Parse the creative text into sections
-    const lines = creativeText.split('\n').map(l => l.trim()).filter(Boolean)
-    let heading = '', subline = '', body = '', pointers = [], price = '', closing = '', cta = ''
-
-    lines.forEach(line => {
-      if (line.startsWith('Heading:')) heading = line.replace('Heading:', '').trim()
-      else if (line.startsWith('Subline:')) subline = line.replace('Subline:', '').trim()
-      else if (line.startsWith('Body:')) body = line.replace('Body:', '').trim()
-      else if (line.startsWith('✔')) pointers = line.split('✔').map(p => p.trim()).filter(Boolean)
-      else if (line.startsWith('Price:')) price = line.replace('Price:', '').trim()
-      else if (line.startsWith('Call Now:') || line.startsWith('Call:')) cta = line
-      else if (!closing && !line.includes('T&C') && !line.includes('Limited') && !line.startsWith('Creative') && heading) {
-        if (!price && !cta) closing = line
-      }
-    })
-
-    // Font helpers
-    const wrapText = (text, x, y, maxWidth, lineHeight, font, color) => {
-      ctx.font = font
-      ctx.fillStyle = color
-      const words = text.split(' ')
-      let line = '', currentY = y
-      words.forEach((word, i) => {
-        const testLine = line + word + ' '
-        if (ctx.measureText(testLine).width > maxWidth && i > 0) {
-          ctx.fillText(line, x, currentY)
-          line = word + ' '
-          currentY += lineHeight
-        } else {
-          line = testLine
-        }
-      })
-      ctx.fillText(line, x, currentY)
-      return currentY + lineHeight
-    }
-
-    let y = 140
-
-    // Project label
-    ctx.font = '500 28px "Arial"'
-    ctx.fillStyle = '#C49635'
-    ctx.fillText(projectName.toUpperCase(), 80, y)
-    y += 60
-
-    // Heading
-    y = wrapText(heading, 80, y, 920, 68, 'bold 62px "Georgia"', '#FAF7F2')
-    y += 20
-
-    // Subline
-    y = wrapText(subline, 80, y, 920, 40, '400 34px "Arial"', 'rgba(250,247,242,0.7)')
-    y += 40
-
-    // Divider
-    ctx.strokeStyle = 'rgba(196,150,53,0.4)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(80, y)
-    ctx.lineTo(1000, y)
-    ctx.stroke()
-    y += 40
-
-    // Body
-    y = wrapText(body, 80, y, 920, 46, '400 36px "Arial"', 'rgba(250,247,242,0.85)')
-    y += 40
-
-    // Pointers
-    if (pointers.length) {
-      ctx.font = '600 30px "Arial"'
-      ctx.fillStyle = '#FAF7F2'
-      const pLine = pointers.map(p => `✔ ${p}`).join('   ')
-      y = wrapText(pLine, 80, y, 920, 40, '600 28px "Arial"', '#FAF7F2')
-      y += 30
-    }
-
-    // Divider
-    ctx.strokeStyle = 'rgba(196,150,53,0.4)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(80, y)
-    ctx.lineTo(1000, y)
-    ctx.stroke()
-    y += 40
-
-    // Price
-    if (price) {
-      ctx.font = 'bold 44px "Georgia"'
-      ctx.fillStyle = '#C49635'
-      ctx.fillText(price, 80, y)
-      y += 60
-    }
-
-    // Closing
-    if (closing) {
-      y = wrapText(closing, 80, y, 920, 40, 'italic 32px "Georgia"', 'rgba(250,247,242,0.8)')
-      y += 20
-    }
-
-    // Bottom bar
-    ctx.fillStyle = 'rgba(196,150,53,0.15)'
-    ctx.fillRect(0, canvas.height - 120, canvas.width, 120)
-
-    // CTA
-    if (cta) {
-      ctx.font = '600 28px "Arial"'
-      ctx.fillStyle = '#C49635'
-      ctx.fillText(cta, 80, canvas.height - 70)
-    }
-
-    // T&C
-    ctx.font = '22px "Arial"'
-    ctx.fillStyle = 'rgba(250,247,242,0.35)'
-    ctx.fillText('Limited Period Offer  |  T&C Apply', 80, canvas.height - 35)
-
-    resolve(canvas.toDataURL('image/png'))
-  })
+  return callOpenAI(system, user, data.language)
 }
