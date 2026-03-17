@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { readFileAsBase64, readFileAsText } from '../utils/store.js'
+import { extractPdfText, readFileAsText } from '../utils/store.js'
 import {
   getApiKey, setApiKey,
   fetchProjects, createProject, updateProject, deleteProject,
@@ -154,11 +154,9 @@ function ProjectsTab() {
                     <span className="line-clamp-1">{p.description || '—'}</span>
                   </td>
                   <td className="py-3 px-4">
-                    {p.ctbFile
-                      ? <span className="text-[11px] text-sage-500">📎 PDF: {p.ctbFile.name}</span>
-                      : p.ctbContent
-                        ? <span className="text-[11px] text-sage-500">✓ {p.ctbContent.length.toLocaleString()} chars</span>
-                        : <span className="text-[11px] text-ink-600/40">No brief</span>}
+                    {p.ctbContent
+                      ? <span className="text-[11px] text-sage-500">✓ {p.ctbContent.length.toLocaleString()} chars</span>
+                      : <span className="text-[11px] text-ink-600/40">No brief</span>}
                   </td>
                   <td className="py-3 px-4 text-xs text-ink-600/50">
                     {p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—'}
@@ -201,21 +199,23 @@ function ProjectForm({ initial, saving, onSave, onClose }) {
   const [ctb,         setCtb]         = useState(initial?.ctbContent || '')
   const [fileLoading, setFileLoading] = useState(false)
   const [fileStatus,  setFileStatus]  = useState('')
-  const [pdfFile,     setPdfFile]     = useState(initial?.ctbFile || null)
   const fileRef = useRef()
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
     setFileLoading(true)
-    setFileStatus('')
+    setFileStatus('Reading file…')
     try {
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
       if (isPdf) {
-        // Store PDF as base64 — sent to AI as document context
-        const base64 = await readFileAsBase64(file)
-        setPdfFile({ name: file.name, base64, size: file.size })
-        setFileStatus(`✓ PDF attached: ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`)
+        setFileStatus('Extracting text from PDF…')
+        const text = await extractPdfText(file)
+        if (!text || text.length < 20) {
+          throw new Error('Could not extract text from this PDF. It may be image-based or scanned. Please copy-paste the content manually.')
+        }
+        setCtb(prev => prev ? prev + '\n\n' + text : text)
+        setFileStatus(`✓ Extracted ${text.length.toLocaleString()} characters from PDF`)
       } else {
         const text = await readFileAsText(file)
         setCtb(prev => prev ? prev + '\n\n' + text : text)
@@ -239,7 +239,7 @@ function ProjectForm({ initial, saving, onSave, onClose }) {
         </div>
 
         <form
-          onSubmit={e => { e.preventDefault(); onSave({ name, description: desc, ctbContent: ctb, ctbFile: pdfFile }) }}
+          onSubmit={e => { e.preventDefault(); onSave({ name, description: desc, ctbContent: ctb }) }}
           className="flex-1 px-7 py-6 space-y-5 overflow-y-auto">
 
           <div>
