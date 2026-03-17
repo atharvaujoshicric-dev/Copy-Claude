@@ -42,7 +42,7 @@ export default function GeneratePage() {
         // Pass a callback to trigger countdown in UI
         2,
       )
-      setOutput({ text, taskType: task, projectName: formData.projectName })
+      setOutput({ text, taskType: task, projectName: formData.projectName, location: formData.location })
     } catch (e) {
       setError(e.message)
     } finally {
@@ -134,7 +134,7 @@ export default function GeneratePage() {
           )}
 
           {output && !loading && (
-            <CopyOutput
+            <CopyOutput location={output.location}
               output={output.text}
               taskType={output.taskType}
               projectName={output.projectName}
