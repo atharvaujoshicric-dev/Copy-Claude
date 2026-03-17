@@ -75,7 +75,7 @@ export default function CopyForm({ taskType, projects, onSubmit, loading }) {
       f.objectives       && `Objectives: ${f.objectives}`,
       f.additionalNotes  && `Additional Notes: ${f.additionalNotes}`,
     ].filter(Boolean).join('\n')
-    onSubmit({ ...f, additionalNotes: extras, ctbContext: proj?.ctbContent || '' })
+    onSubmit({ ...f, additionalNotes: extras, ctbContext: proj?.ctbContent || '', ctbFile: proj?.ctbFile || null })
   }
 
   const linked = projects.find(p => p.id === f.projectId)
